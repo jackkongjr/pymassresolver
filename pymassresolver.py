@@ -52,7 +52,7 @@ Example, reading directly from sublist3r output:
 
 or redirecting output from terminal
 
-    cat host_file | python pymassres.py -i
+    cat hosts_file | python pymassres.py -i
 
 
 """
