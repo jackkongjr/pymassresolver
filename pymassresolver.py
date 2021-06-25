@@ -3,7 +3,11 @@ import sys
 import getopt
 import dns.resolver
 import re
+import docx
 
+
+
+savefile = None
 
 def clean(hostname):
     hostname = hostname.strip().replace("\n","")
@@ -41,7 +45,7 @@ Available commands:
     -h                this message
     -i                reads from stdin   
     -f / --file       file path to read
-    
+    -s / --save       save as docx table
 
 It can detect malformed domain and automatically skip it
     
@@ -68,14 +72,19 @@ def resolve(line):
             for val in result:
                 ips.append (val.to_text())
             print (c_line + " " + " ".join(ips) )
+            return c_line,ips
+
         except dns.exception.DNSException:
-            pass
+            return "",""
+    else:
+        return "",""
 
 
 def main(argv):
+    global savefile
     inputfile = ''
     try:
-       opts, args = getopt.getopt(argv,"hif:",["file="])
+        opts, args = getopt.getopt(argv,"hif:s:",["file=","save="])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -83,13 +92,29 @@ def main(argv):
     if len(opts)==0:
         usage()
         exit(0)
+
+    doc = docx.Document()
+    doc.add_heading('Table', 0)
+    table = doc.add_table(rows=1, cols=2)
+    row = table.rows[0].cells
+    row[0].text = 'Hostname'
+    row[1].text = 'IP'
+    done_op = False
     for opt, arg in opts:
         if opt == '-h':
             usage()
             sys.exit()
         elif opt in ("-i"):
-            for line in sys.stdin:
-                resolve(line)
+            for line in sys.stdin:               
+                c,i = resolve(line)
+                if c and i :
+                    row = table.add_row().cells
+                    row[0].text = c
+                    row[1].text = " ".join(i)
+                    done_op = True
+
+        elif opt in ("-s","--save"):
+            savefile = arg
 
         elif opt in ("-f", "--file"):
             content = []
@@ -101,8 +126,14 @@ def main(argv):
                 print("Error accessing file")
                 sys.exit(0)
             for line in content:
-                resolve(line)
-        
+                c,i = resolve(line)
+                if c and i:
+                    row = table.add_row().cells
+                    row[0].text = c
+                    row[1].text = " ".join(i)
+                    done_op = True
+    if done_op and savefile:
+        doc.save(savefile)
 
 
 if __name__=='__main__':
